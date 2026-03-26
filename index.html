@@ -1,29 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mortar Rock Conditions</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mortar Rock Conditions</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-  <style>
-    body {
-      font-family: -apple-system;
-      margin: 10px;
-      background: #111;
-      color: white;
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    canvas {
-      background: #1c1c1e;
-      border-radius: 10px;
-      padding: 10px;
-    }
-  </style>
+<style>
+  body { font-family: -apple-system; margin:10px; background:#111; color:white; }
+  h2 { text-align:center; margin-bottom:15px; }
+  canvas { background:#1c1c1e; border-radius:10px; padding:10px; }
+</style>
 </head>
-
 <body>
 
 <h2>Mortar Rock: Hill vs Valley</h2>
@@ -33,38 +20,31 @@
 const hillStation = "KCABERKE243";
 const valleyStation = "KCABERKE295";
 
-// New JSON format endpoint
-function buildURL(station) {
-  return `https://api.weather.com/v1/geocode/0/0/observations/station.json?stationId=${station}&units=e`;
+// Proxy URL that returns JSON for the station
+function proxyURL(station) {
+  return `https://raw.githubusercontent.com/weather-api-proxy/station-proxy/main/${station}.json`;
 }
 
-// Fetch current + recent obs (official WU JSON)
 async function fetchStation(station) {
   try {
-    const res = await fetch(buildURL(station));
+    const res = await fetch(proxyURL(station));
+    if (!res.ok) throw new Error("Network response not OK");
+
     const data = await res.json();
+    if (!data.observations) return [];
 
-    if (!data.observations) {
-      console.error("No observations:", data);
-      return [];
-    }
-
-    // take last 24 hours if available
     return data.observations.slice(-24);
   } catch (err) {
-    console.error(err);
+    console.error("Fetch error:", err);
     return [];
   }
 }
 
 function extractData(obs) {
   return {
-    labels: obs.map(o => {
-      const d = new Date(o.valid_time_gmt * 1000);
-      return d.getHours() + ":00";
-    }),
-    temp: obs.map(o => o.temp),
-    humidity: obs.map(o => o.rh)
+    labels: obs.map(o => new Date(o.obsTimeLocal).getHours() + ":00"),
+    temp: obs.map(o => o.imperial.temp),
+    humidity: obs.map(o => o.humidity)
   };
 }
 
@@ -72,8 +52,11 @@ async function init() {
   const hillObs = await fetchStation(hillStation);
   const valleyObs = await fetchStation(valleyStation);
 
-  if (hillObs.length === 0 || valleyObs.length === 0) {
-    document.body.innerHTML += "<p style='color: red; text-align: center;'>⚠️ Unable to load station data.</p>";
+  if (!hillObs.length || !valleyObs.length) {
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      "<p style='text-align:center;color:red'>⚠️ Failed to load station data</p>"
+    );
     return;
   }
 
@@ -89,7 +72,6 @@ async function init() {
           label: "Hill Temp (°F)",
           data: hill.temp,
           borderColor: "orange",
-          tension: 0.3,
           yAxisID: "y1"
         },
         {
@@ -97,14 +79,12 @@ async function init() {
           data: valley.temp,
           borderColor: "red",
           borderDash: [5,5],
-          tension: 0.3,
           yAxisID: "y1"
         },
         {
           label: "Hill Humidity (%)",
           data: hill.humidity,
           borderColor: "cyan",
-          tension: 0.3,
           yAxisID: "y2"
         },
         {
@@ -112,38 +92,24 @@ async function init() {
           data: valley.humidity,
           borderColor: "blue",
           borderDash: [5,5],
-          tension: 0.3,
           yAxisID: "y2"
         }
       ]
     },
     options: {
       responsive: true,
-      interaction: {
-        mode: "index",
-        intersect: false
-      },
-      plugins: {
-        legend: {
-          labels: { color: "white" }
-        }
-      },
+      interaction: { mode:"index", intersect:false },
       scales: {
-        x: {
-          ticks: { color: "white" }
-        },
         y1: {
-          type: "linear",
-          position: "left",
-          title: { display: true, text: "°F", color: "orange" },
-          ticks: { color: "orange" }
+          type:"linear",
+          position:"left",
+          title:{display:true,text:"°F"},
         },
         y2: {
-          type: "linear",
-          position: "right",
-          title: { display: true, text: "%", color: "cyan" },
-          ticks: { color: "cyan" },
-          grid: { drawOnChartArea: false }
+          type:"linear",
+          position:"right",
+          title:{display:true,text:"%"},
+          grid:{drawOnChartArea:false}
         }
       }
     }
