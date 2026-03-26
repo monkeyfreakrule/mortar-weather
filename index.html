@@ -3,7 +3,10 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mortar Rock Conditions</title>
+
+  <!-- Stable Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
   <style>
     body {
       font-family: -apple-system;
@@ -22,30 +25,43 @@
     }
   </style>
 </head>
+
 <body>
 
 <h2>Mortar Rock: Hill vs Valley</h2>
 <canvas id="chart"></canvas>
 
 <script>
-// Stations
 const hillStation = "KCABERKE243";
 const valleyStation = "KCABERKE295";
 
-// API endpoint (no key workaround)
 function buildURL(station) {
   return `https://api.weather.com/v2/pws/observations/all/1day?stationId=${station}&format=json&units=e&apiKey=demo`;
 }
 
 async function fetchStation(station) {
-  const res = await fetch(buildURL(station));
-  const data = await res.json();
-  return data.observations.slice(-24);
+  try {
+    const res = await fetch(buildURL(station));
+    const data = await res.json();
+
+    if (!data.observations) {
+      alert("Weather data failed to load");
+      return [];
+    }
+
+    return data.observations.slice(-24);
+  } catch (err) {
+    alert("Error fetching weather data");
+    return [];
+  }
 }
 
 function extractData(obs) {
   return {
-    labels: obs.map(o => new Date(o.obsTimeLocal).getHours() + ":00"),
+    labels: obs.map(o => {
+      const d = new Date(o.obsTimeLocal);
+      return d.getHours() + ":00";
+    }),
     temp: obs.map(o => o.imperial.temp),
     humidity: obs.map(o => o.humidity)
   };
@@ -54,6 +70,10 @@ function extractData(obs) {
 async function init() {
   const hillObs = await fetchStation(hillStation);
   const valleyObs = await fetchStation(valleyStation);
+
+  if (hillObs.length === 0 || valleyObs.length === 0) {
+    return;
+  }
 
   const hill = extractData(hillObs);
   const valley = extractData(valleyObs);
@@ -67,6 +87,7 @@ async function init() {
           label: "Hill Temp (°F)",
           data: hill.temp,
           borderColor: "orange",
+          tension: 0.3,
           yAxisID: "y1"
         },
         {
@@ -74,12 +95,14 @@ async function init() {
           data: valley.temp,
           borderColor: "red",
           borderDash: [5,5],
+          tension: 0.3,
           yAxisID: "y1"
         },
         {
           label: "Hill Humidity (%)",
           data: hill.humidity,
           borderColor: "cyan",
+          tension: 0.3,
           yAxisID: "y2"
         },
         {
@@ -87,6 +110,7 @@ async function init() {
           data: valley.humidity,
           borderColor: "blue",
           borderDash: [5,5],
+          tension: 0.3,
           yAxisID: "y2"
         }
       ]
