@@ -3,8 +3,6 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mortar Rock Conditions</title>
-
-  <!-- Stable Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
@@ -35,23 +33,26 @@
 const hillStation = "KCABERKE243";
 const valleyStation = "KCABERKE295";
 
+// New JSON format endpoint
 function buildURL(station) {
-  return `https://api.weather.com/v2/pws/observations/all/1day?stationId=${station}&format=json&units=e&apiKey=demo`;
+  return `https://api.weather.com/v1/geocode/0/0/observations/station.json?stationId=${station}&units=e`;
 }
 
+// Fetch current + recent obs (official WU JSON)
 async function fetchStation(station) {
   try {
     const res = await fetch(buildURL(station));
     const data = await res.json();
 
     if (!data.observations) {
-      alert("Weather data failed to load");
+      console.error("No observations:", data);
       return [];
     }
 
+    // take last 24 hours if available
     return data.observations.slice(-24);
   } catch (err) {
-    alert("Error fetching weather data");
+    console.error(err);
     return [];
   }
 }
@@ -59,11 +60,11 @@ async function fetchStation(station) {
 function extractData(obs) {
   return {
     labels: obs.map(o => {
-      const d = new Date(o.obsTimeLocal);
+      const d = new Date(o.valid_time_gmt * 1000);
       return d.getHours() + ":00";
     }),
-    temp: obs.map(o => o.imperial.temp),
-    humidity: obs.map(o => o.humidity)
+    temp: obs.map(o => o.temp),
+    humidity: obs.map(o => o.rh)
   };
 }
 
@@ -72,6 +73,7 @@ async function init() {
   const valleyObs = await fetchStation(valleyStation);
 
   if (hillObs.length === 0 || valleyObs.length === 0) {
+    document.body.innerHTML += "<p style='color: red; text-align: center;'>⚠️ Unable to load station data.</p>";
     return;
   }
 
