@@ -17,14 +17,20 @@
 <canvas id="chart"></canvas>
 
 <script>
+// Hill and Valley station IDs
 const hillStation = "KCABERKE243";
 const valleyStation = "KCABERKE295";
 
-// Proxy URL that returns JSON for the station
+// Use your own GitHub repo raw URLs
 function proxyURL(station) {
-  return `https://raw.githubusercontent.com/weather-api-proxy/station-proxy/main/${station}.json`;
+  if (station === "KCABERKE243") {
+    return "https://raw.githubusercontent.com/<your-username>/station-proxy/main/KCABERKE243.json";
+  } else if (station === "KCABERKE295") {
+    return "https://raw.githubusercontent.com/<your-username>/station-proxy/main/KCABERKE295.json";
+  }
 }
 
+// Fetch station JSON
 async function fetchStation(station) {
   try {
     const res = await fetch(proxyURL(station));
@@ -40,6 +46,7 @@ async function fetchStation(station) {
   }
 }
 
+// Extract labels, temp, and humidity
 function extractData(obs) {
   return {
     labels: obs.map(o => new Date(o.obsTimeLocal).getHours() + ":00"),
@@ -48,6 +55,7 @@ function extractData(obs) {
   };
 }
 
+// Initialize chart
 async function init() {
   const hillObs = await fetchStation(hillStation);
   const valleyObs = await fetchStation(valleyStation);
@@ -99,18 +107,11 @@ async function init() {
     options: {
       responsive: true,
       interaction: { mode:"index", intersect:false },
+      plugins: { legend: { labels: { color:"white" } } },
       scales: {
-        y1: {
-          type:"linear",
-          position:"left",
-          title:{display:true,text:"°F"},
-        },
-        y2: {
-          type:"linear",
-          position:"right",
-          title:{display:true,text:"%"},
-          grid:{drawOnChartArea:false}
-        }
+        x: { ticks: { color:"white" } },
+        y1: { type:"linear", position:"left", title:{display:true,text:"°F"}, ticks:{color:"orange"} },
+        y2: { type:"linear", position:"right", title:{display:true,text:"%"}, ticks:{color:"cyan"}, grid:{drawOnChartArea:false} }
       }
     }
   });
