@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mortar Rock Conditions</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: -apple-system;
+      margin: 10px;
+      background: #111;
+      color: white;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    canvas {
+      background: #1c1c1e;
+      border-radius: 10px;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Mortar Rock: Hill vs Valley</h2>
+<canvas id="chart"></canvas>
+
+<script>
+// Stations
+const hillStation = "KCABERKE243";
+const valleyStation = "KCABERKE295";
+
+// API endpoint (no key workaround)
+function buildURL(station) {
+  return `https://api.weather.com/v2/pws/observations/all/1day?stationId=${station}&format=json&units=e&apiKey=demo`;
+}
+
+async function fetchStation(station) {
+  const res = await fetch(buildURL(station));
+  const data = await res.json();
+  return data.observations.slice(-24);
+}
+
+function extractData(obs) {
+  return {
+    labels: obs.map(o => new Date(o.obsTimeLocal).getHours() + ":00"),
+    temp: obs.map(o => o.imperial.temp),
+    humidity: obs.map(o => o.humidity)
+  };
+}
+
+async function init() {
+  const hillObs = await fetchStation(hillStation);
+  const valleyObs = await fetchStation(valleyStation);
+
+  const hill = extractData(hillObs);
+  const valley = extractData(valleyObs);
+
+  new Chart(document.getElementById("chart"), {
+    type: "line",
+    data: {
+      labels: hill.labels,
+      datasets: [
+        {
+          label: "Hill Temp (°F)",
+          data: hill.temp,
+          borderColor: "orange",
+          yAxisID: "y1"
+        },
+        {
+          label: "Valley Temp (°F)",
+          data: valley.temp,
+          borderColor: "red",
+          borderDash: [5,5],
+          yAxisID: "y1"
+        },
+        {
+          label: "Hill Humidity (%)",
+          data: hill.humidity,
+          borderColor: "cyan",
+          yAxisID: "y2"
+        },
+        {
+          label: "Valley Humidity (%)",
+          data: valley.humidity,
+          borderColor: "blue",
+          borderDash: [5,5],
+          yAxisID: "y2"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: {
+        mode: "index",
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          labels: { color: "white" }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: "white" }
+        },
+        y1: {
+          type: "linear",
+          position: "left",
+          title: { display: true, text: "°F", color: "orange" },
+          ticks: { color: "orange" }
+        },
+        y2: {
+          type: "linear",
+          position: "right",
+          title: { display: true, text: "%", color: "cyan" },
+          ticks: { color: "cyan" },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+}
+
+init();
+</script>
+
+</body>
+</html>
